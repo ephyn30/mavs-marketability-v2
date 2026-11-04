@@ -197,6 +197,12 @@ def load(path: str | Path = DEFAULT_PATH) -> Model:
         R = np.column_stack([_rank_pct(d.followers), _rank_pct(d.global_reach_score), _rank_pct(d.rating_2k), _rank_pct(d.sentiment_score), d.s_availability])
         z = (R - np.array(mean)) / np.array(sd); d["p_endorse"] = 1 / (1 + np.exp(-(icpt + z @ np.array(coef))))
         reg = {"coef": coef, "mean": mean, "sd": sd, "intercept": icpt, "cv_auc": cv}
+    # ---------- draw factor (display only: not in FACTORS, so it never enters the score)
+    dcols = ["road_games", "draw_factor", "draw_team_adj"]
+    drow = _merged_rows(wb, wv, "Draw Factor", 5, 13) if "Draw Factor" in wb.sheetnames else []
+    D = pd.DataFrame([(r[2], r[6], r[10], r[12]) for r in drow if r[2]], columns=["player"] + dcols).set_index("player")
+    for c in dcols:
+        d[c] = pd.to_numeric(d.player.map(D[c]), errors="coerce")
     # ---------- data dictionary
     dd = pd.DataFrame([r[:5] for r in _rows(wb["Data Dictionary"])[1:] if r[0]], columns=["Item", "Where", "Meaning", "How it is made", "Source"]) if "Data Dictionary" in wb.sheetnames else pd.DataFrame()
     d = d.set_index("player", drop=False)

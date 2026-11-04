@@ -317,7 +317,7 @@ def get_model(path: str, mtime: float):
 
 
 REQUIRED_SHEETS = ["Control Panel", "Players", "Outcome", "Endorsement Leads"]
-OPTIONAL_SHEETS = ["Regression", "Team Brand Health", "Data Dictionary", "Scores"]
+OPTIONAL_SHEETS = ["Regression", "Team Brand Health", "Data Dictionary", "Scores", "Draw Factor"]
 PLAYER_COLS = ["Player", "Team", "Instagram", "TikTok", "X followers", "2K", "Sentiment", "Global Reach",
                "Availability", "Age", "Seasons", "Salary", "Data flags"]          # header prefixes data_layer.load() looks for
 
@@ -659,6 +659,8 @@ with tab_p:
                      ("Brand minus pay", f"{row['gap']:+.2f}" if isnum(row["gap"]) else "–"),
                      ("Games played", pc(row["p_games"])),
                      ("Career runway", pc(row["p_runway"])),
+                     ("Road draw factor (not in score)", f"{row['draw_factor']:.3f} · {row['road_games']:.0f} road games" if isnum(row["draw_factor"]) else "–"),
+                     ("Draw vs own team (not in score)", f"{row['draw_team_adj']:+.3f}" if isnum(row["draw_team_adj"]) else "–"),
                      ("Sponsors on record", e(row["sponsors_listed"]) if row["sponsors_listed"] else "None")]
             if row["lead_sponsors"]:
                 links = " ".join(f'<a href="{e(u.strip())}" target="_blank">[{i + 1}]</a>' for i, u in enumerate(str(row["lead_links"]).split("|")) if u.strip().startswith("http"))
@@ -839,17 +841,20 @@ with tab_l:
     board["Endorsed"] = t.endorsed.map({1: "Yes", 0: "", True: "Yes", False: ""})
     if by != "Brand − pay":
         board["Brand − pay"] = t.gap
+    board["Draw factor"] = t.draw_factor
+    board["Draw vs team"] = t.draw_team_adj
+    board["Road games"] = t.road_games
     pct_cols = [c for c in board.columns if c in [dl.LABEL[f] for f in dl.FACTORS]]
     key_style = lambda s: [f"background-color:{ACCENT_SOFT};color:{INK};font-weight:700" for _ in s]
     sty = board.style.map(style_pct, subset=pct_cols).apply(key_style, subset=[by if by in board.columns else "Score"])
-    fmt = {"Score": "{:.1f}", "Brand − pay": "{:+.2f}", **{c: "{:.0f}" for c in pct_cols}}
+    fmt = {"Score": "{:.1f}", "Brand − pay": "{:+.2f}", "Draw factor": "{:.3f}", "Draw vs team": "{:+.3f}", "Road games": "{:.0f}", **{c: "{:.0f}" for c in pct_cols}}
     if by in board.columns and by != "Brand − pay":
         fmt[by] = "{:.0f}" if col.startswith("p_") and col != "p_endorse" else "{:.1f}"
     if by == "Endorsement likelihood":
         fmt[by] = "{:.0f}%"
     st.dataframe(sty.format(fmt, na_rep="–"), hide_index=True, width="stretch", height=640)
     st.download_button("Download this table (CSV)", board.to_csv(index=False).encode(), "mavs_leaderboard.csv", "text/csv")
-    st.caption("Highlighted column = what the table is ranked by. Factor columns are league percentiles (99 = best).")
+    st.caption("Highlighted column = what the table is ranked by. Factor columns are league percentiles (99 = best). Draw columns are context only and do not affect the score or rank.")
 
 
 # ---------------------------------------------------------------- compare
