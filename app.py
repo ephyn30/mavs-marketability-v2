@@ -905,14 +905,17 @@ with tab_s:
     nb = knn.similar_players(d, sp_pick, k=sk, features=feats)
     peer_avg = nb.score.mean()
     gap = me["score"] - peer_avg
-    verdict, vcol = ("Under-marketed for his performance", NEG) if gap <= -8 else \
+    performance_only = list(feats) == list(knn.PERFORMANCE)
+    matched_on = "performance" if performance_only else dl.LABEL[feats[0][2:]].lower() if len(feats) == 1 else "matched factors"
+    verdict, vcol = (f"Under-marketed for his {matched_on}", NEG) if gap <= -8 else \
                     ("Out-marketing his look-alikes", POS) if gap >= 8 else ("In line with his look-alikes", MUTED)
     tiles([(f"{sp_pick} · 2K rating", f"{me['rating_2k']:.0f}" if isnum(me["rating_2k"]) else "–", e(me["team"]), None),
            (f"{sp_pick} · marketability", f"{me['score']:.1f}", f"rank {me['rank']} of {N}", ACCENT),
            ("Look-alike average", f"{peer_avg:.1f}", f"{len(nb)} players · {int(nb.endorsed.sum())} qualifying endorsements", None),
            ("Marketability gap", f"{gap:+.1f}", f'<b style="color:{vcol}">{verdict}</b>', vcol)])
 
-    left, right = st.columns([1.15, 1], gap="large")
+    # one factor fits beside the chart; several factor columns need the full width
+    left, right = st.columns([1.15, 1], gap="large") if len(feats) == 1 else (st.container(), st.container())
     with left:
         sec("Performance vs marketability", "shaded = look-alike 2K range")
         others = d[~d.player.isin(list(nb.player) + [sp_pick])]
@@ -934,13 +937,22 @@ with tab_s:
         chart(fig, 420, "NBA 2K rating", "Marketability score", legend=True)
     with right:
         sec("Nearest look-alikes")
-        tbl = pd.DataFrame({"Player": nb.player, "Team": nb.team, "Similarity": nb.similarity, "2K": nb.rating_2k, "Score": nb.score,
-                            f"Score vs {sp_pick}": nb.score - me["score"], "Qualifying endorsement": nb.endorsed.astype(bool)})
+        row_order = [sp_pick] + list(nb.player)                                          # selected player first, for reference
+        tbl = pd.DataFrame({"Player": [f"{sp_pick} (selected)"] + list(nb.player), "Team": d.loc[row_order, "team"].to_numpy(),
+                            "Similarity": [None] + list(nb.similarity)})
+        factor_cols = {dl.LABEL[c[2:]]: c for c in feats}
+        for label, c in factor_cols.items():
+            tbl[label] = d.loc[row_order, c].to_numpy()
+        tbl["2K"] = d.loc[row_order, "rating_2k"].to_numpy()
+        tbl["Score"] = d.loc[row_order, "score"].to_numpy()
+        tbl[f"Score vs {sp_pick}"] = [None] + list(nb.score - me["score"])
+        tbl["Qualifying endorsement"] = d.loc[row_order, "endorsed"].astype(bool).to_numpy()
         st.dataframe(tbl, hide_index=True, width="stretch",
                      column_config={"Similarity": st.column_config.NumberColumn(format="%.0f%%"), "2K": st.column_config.NumberColumn(format="%.0f"),
+                                    **{label: st.column_config.NumberColumn(format="%.2f") for label in factor_cols},
                                     "Score": st.column_config.NumberColumn(format="%.1f"), f"Score vs {sp_pick}": st.column_config.NumberColumn(format="%+.1f"),
                                     "Qualifying endorsement": st.column_config.CheckboxColumn()})
-        st.caption(f"Positive 'Score vs' = the look-alike is more marketable than {sp_pick}.")
+        st.caption(f"Factor columns are the 0-1 scores used for the match. Positive 'Score vs' = the look-alike is more marketable than {sp_pick}.")
 
     sec("League-wide", f"each player's score minus the average of his {sk} look-alikes ({', '.join(match_labels) or 'Performance (2K)'})")
     gaps = knn.marketability_gap(d, k=sk, features=feats).join(d[["player", "team", "rating_2k", "score", "endorsed"]])
@@ -954,7 +966,7 @@ with tab_s:
         md(f'<p class="eyebrow" style="color:{NEG}">Most under-marketed</p>')
         st.dataframe(gt(gaps.nsmallest(15, "gap")), hide_index=True, width="stretch", column_config=cfg, height=420)
     with u2:
-        md(f'<p class="eyebrow" style="color:{POS}">Most out-marketing their play</p>')
+        md(f'<p class="eyebrow" style="color:{POS}">Most out-marketing their {"play" if performance_only else "look-alikes"}</p>')
         st.dataframe(gt(gaps.nlargest(15, "gap")), hide_index=True, width="stretch", column_config=cfg, height=420)
     st.download_button("Download all gaps (CSV)", gt(gaps.sort_values("gap")).to_csv(index=False).encode(), "mavs_marketability_gaps.csv", "text/csv")
 
