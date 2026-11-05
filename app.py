@@ -914,8 +914,7 @@ with tab_s:
            ("Look-alike average", f"{peer_avg:.1f}", f"{len(nb)} players · {int(nb.endorsed.sum())} qualifying endorsements", None),
            ("Marketability gap", f"{gap:+.1f}", f'<b style="color:{vcol}">{verdict}</b>', vcol)])
 
-    # one factor fits beside the chart; several factor columns need the full width
-    left, right = st.columns([1.15, 1], gap="large") if len(feats) == 1 else (st.container(), st.container())
+    left, right = st.columns([1.15, 1], gap="large")
     with left:
         sec("Performance vs marketability", "shaded = look-alike 2K range")
         others = d[~d.player.isin(list(nb.player) + [sp_pick])]
@@ -948,7 +947,8 @@ with tab_s:
         tbl[f"Score vs {sp_pick}"] = [None] + list(nb.score - me["score"])
         tbl["Qualifying endorsement"] = d.loc[row_order, "endorsed"].astype(bool).to_numpy()
         st.dataframe(tbl, hide_index=True, width="stretch",
-                     column_config={"Similarity": st.column_config.NumberColumn(format="%.0f%%"), "2K": st.column_config.NumberColumn(format="%.0f"),
+                     column_config={"Player": st.column_config.TextColumn(pinned=True),                  # stays visible while scrolling sideways
+                                    "Similarity": st.column_config.NumberColumn(format="%.0f%%"), "2K": st.column_config.NumberColumn(format="%.0f"),
                                     **{label: st.column_config.NumberColumn(format="%.2f") for label in factor_cols},
                                     "Score": st.column_config.NumberColumn(format="%.1f"), f"Score vs {sp_pick}": st.column_config.NumberColumn(format="%+.1f"),
                                     "Qualifying endorsement": st.column_config.CheckboxColumn()})
