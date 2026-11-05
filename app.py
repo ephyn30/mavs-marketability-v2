@@ -609,6 +609,11 @@ def recs_agent(row, sim):
     return out
 
 
+def sponsor_names(s) -> str:                      # lead text mixes names with research notes: keep the names only
+    parts = (p.strip() for p in re.sub(r"\s*\([^)]*\)", "", str(s)).split(";"))
+    return "; ".join(p for p in parts if p and not re.search(r"no shoe deal|aggregator|without a reported", p))
+
+
 # ---------------------------------------------------------------- tabs
 tab_p, tab_t, tab_l, tab_c, tab_s, tab_d, tab_m = st.tabs(["Player", "Team", "Leaderboard", "Compare", "Similar players", "Data", "Method"])
 if load_error:   # after the tabs, so the band stays at the very top of the page
@@ -839,6 +844,7 @@ with tab_l:
         if dl.LABEL[f] != by:
             board[dl.LABEL[f]] = (t["p_" + f] * 100).round(0)
     board["Endorsed"] = t.endorsed.map({1: "Yes", 0: "", True: "Yes", False: ""})
+    board["Sponsors"] = t.sponsors_listed.where(t.sponsors_listed != "", t.lead_sponsors.map(sponsor_names))
     if by != "Brand − pay":
         board["Brand − pay"] = t.gap
     board["Draw factor"] = t.draw_factor
