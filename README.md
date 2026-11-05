@@ -16,4 +16,4 @@ Run locally: `pip install -r requirements.txt` then `streamlit run app.py`.
 **New season:** open the Data tab, upload the new workbook (same sheets and columns), check the workbook check is all ✓.
 Uploads last for the browser session; replace `data/Mavs_model_slim.xlsx` to make a season the default.
 
-Note: 38 of the 154 endorsed players come from web-search leads that have not been verified by the team (the app says so).
+Note: 16 of the 114 players with a qualifying endorsement come from web-search leads that have not been verified by the team (the app says so).

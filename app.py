@@ -527,7 +527,7 @@ def recs_team(row):
 def recs_player(row):
     out = []
     for f in sorted(SCORED, key=lambda f: row["p_" + f])[:2]:
-        out.append(("Action", f"**Improve {dl.LABEL[f].lower()}** ({place(row['p_' + f])}). Typical endorsed players score {END_MED[f]:.2f}; he scores {row['s_' + f]:.2f}. {ACTION[f]}"))
+        out.append(("Action", f"**Improve {dl.LABEL[f].lower()}** ({place(row['p_' + f])}). Typical players with a qualifying endorsement score {END_MED[f]:.2f}; he scores {row['s_' + f]:.2f}. {ACTION[f]}"))
     best = max(SCORED, key=lambda f: row["p_" + f])
     if row["p_" + best] >= lo:
         out.append(("Strength", f"**Strongest asset: {dl.LABEL[best].lower()}** ({place(row['p_' + best])})."))
@@ -559,20 +559,20 @@ def recs_agent(row, sim):
         if en:
             out.append(("Note", f"**Comparables.** {len(en)} of his {len(sim)} closest profiles have deals ({name_list(en)}). Use their terms as benchmarks."))
         else:
-            out.append(("Risk", f"**No comparables with deals.** None of his {len(sim)} closest profiles has a recorded endorsement, so the pitch rests on his own numbers."))
+            out.append(("Risk", f"**No comparables with qualifying deals.** None of his {len(sim)} closest profiles has a qualifying endorsement, so the pitch rests on his own numbers."))
     if row["endorsed"] == 1 and isnum(pe):
         if pe < 0.3:
-            out.append(("Strength", f"**Over-delivers.** Endorsed although the model likelihood is only {pe:.0%}: evidence he sells beyond his numbers. Use it in renewals."))
+            out.append(("Strength", f"**Over-delivers.** Qualifying endorsement although the model likelihood is only {pe:.0%}: evidence he sells beyond his numbers. Use it in renewals."))
         else:
-            out.append(("Note", f"Endorsed, as his profile suggests (model likelihood {pe:.0%})."))
+            out.append(("Note", f"Qualifying endorsement, as his profile suggests (model likelihood {pe:.0%})."))
     elif row["endorsed"] == 0 and isnum(pe) and pe < 0.5:
-        out.append(("Note", f"No endorsement recorded; model likelihood {pe:.0%}."))
+        out.append(("Note", f"No qualifying endorsement; model likelihood {pe:.0%}."))
     # 4. biggest lever: points gained by lifting a factor to the typical endorsed player's level
     gains = {f: max(0.0, END_MED[f] - row["s_" + f]) * active_w[f] / W_TOT * 100 for f in SCORED if active_w[f] > 0 and isnum(END_MED[f])}
     if gains:
         bf = max(gains, key=gains.get)
         if gains[bf] >= 0.5:
-            out.append(("Action", f"**Biggest lever: {dl.LABEL[bf].lower()}.** Reaching the typical endorsed player's level would add about {gains[bf]:.1f} points to his score. {ACTION[bf]}"))
+            out.append(("Action", f"**Biggest lever: {dl.LABEL[bf].lower()}.** Reaching the level of a typical player with a qualifying endorsement would add about {gains[bf]:.1f} points to his score. {ACTION[bf]}"))
     # 5. deal structure
     if isnum(age):
         if row["p_runway"] >= hi:
@@ -626,9 +626,9 @@ with tab_p:
     age_txt = f"Age {int(row['age'])}" if isnum(row["age"]) else "Age n/a"
     t_name, t_bg, t_fg = tier(row["score_pct"])
     if row["endorsed"]:
-        en_chip = ("Endorsed · unverified lead", "#E8EDF1", MUTED) if str(row["endorse_source"]).startswith("Lead") else ("Endorsed", "#E1ECF5", POS)
+        en_chip = ("Qualifying endorsement · unverified lead", "#E8EDF1", MUTED) if str(row["endorse_source"]).startswith("Lead") else ("Qualifying endorsement", "#E1ECF5", POS)
     else:
-        en_chip = ("No endorsement recorded", "#E8EDF1", MUTED)
+        en_chip = ("No qualifying endorsement", "#E8EDF1", MUTED)
     md(f'''<div class="ph"><div class="ph-left">{avatar(row["player"])}<div>
         <div class="ph-name">{e(row["player"])}</div>
         <div class="ph-meta"><b>{e(row["team"])}</b> · {age_txt} · Salary {money(row["salary"])}</div>
@@ -646,7 +646,7 @@ with tab_p:
         with left:
             sec("Profile shape", "league percentile on each scored factor")
             radar([(pick, {f: row["p_" + f] for f in SCORED}, ACCENT, False, True),
-                   ("Typical endorsed player", END_PCT, NOTE, True, False)])
+                   ("Typical player with a qualifying endorsement", END_PCT, NOTE, True, False)])
         with right:
             sec("Percentile rankings", f"vs all {N} players")
             md(pct_rows(row))
@@ -659,7 +659,7 @@ with tab_p:
             sec("Summary")
             pe = row.get("p_endorse", np.nan)
             rows = [(f"Score · {e(s)}", f"{row['score_' + s]:.1f}") for s in model.scenarios if "score_" + s in row.index]
-            rows += [("Endorsement likelihood (model)", f"{pe:.0%}" if isnum(pe) else "–"),
+            rows += [("Qualifying endorsement likelihood (model)", f"{pe:.0%}" if isnum(pe) else "–"),
                      ("Salary percentile", pc(row["pay_pct"])),
                      ("Brand minus pay", f"{row['gap']:+.2f}" if isnum(row["gap"]) else "–"),
                      ("Games played", pc(row["p_games"])),
@@ -685,13 +685,13 @@ with tab_p:
 
         sec("Comparable players", "closest profiles across the five scored factors")
         st.slider("Number of comparables", 3, 10, 5, key="k")
-        st.caption(f"{sim.endorsed.mean():.0%} of these {len(sim)} players are endorsed. For look-alikes matched on performance only, see the Similar players tab.")
+        st.caption(f"{sim.endorsed.mean():.0%} of these {len(sim)} players have a qualifying endorsement. For look-alikes matched on performance only, see the Similar players tab.")
         show = sim[["player", "team", "similarity", "score", "rank", "endorsed", "followers", "rating_2k"]].rename(
             columns={"player": "Player", "team": "Team", "similarity": "Similarity", "score": "Score", "rank": "Rk",
-                     "endorsed": "Endorsed", "followers": "Followers", "rating_2k": "2K"})
+                     "endorsed": "Qualifying endorsement", "followers": "Followers", "rating_2k": "2K"})
         st.dataframe(show, hide_index=True, width="stretch",
                      column_config={"Similarity": st.column_config.NumberColumn(format="%.0f%%"), "Score": st.column_config.NumberColumn(format="%.1f"),
-                                    "Endorsed": st.column_config.CheckboxColumn(), "Followers": st.column_config.NumberColumn(format="%d")})
+                                    "Qualifying endorsement": st.column_config.CheckboxColumn(), "Followers": st.column_config.NumberColumn(format="%d")})
 
         with st.expander("Raw inputs"):
             raw = pd.DataFrame({"Instagram": [row["instagram"]], "TikTok": [row["tiktok"]], "X": [row["x"]], "2K rating": [row["rating_2k"]],
@@ -716,9 +716,9 @@ with tab_p:
             sec("At a glance")
             pe = row.get("p_endorse", np.nan)
             md(kv_table([("Marketability", f"{row['score']:.1f} · {ordinal(pctl(row['score_pct']))} pct"),
-                         ("Endorsement likelihood", f"{pe:.0%}" if isnum(pe) else "–"),
+                         ("Qualifying endorsement likelihood", f"{pe:.0%}" if isnum(pe) else "–"),
                          ("Brand minus pay", f"{row['gap']:+.2f}" if isnum(row["gap"]) else "–"),
-                         ("Endorsed comparables", f"{int(sim.endorsed.sum())} of {len(sim)}")]))
+                         ("Comparables with a qualifying endorsement", f"{int(sim.endorsed.sum())} of {len(sim)}")]))
             md(drivers(row))
             st.caption("Recommendations are rule-based on this player's factor percentiles, the weighting scenario and the thresholds in the sidebar.")
 
@@ -738,7 +738,7 @@ def team_recs(tm, roster):
     if "p_endorse" in roster.columns:
         tgt = roster[(roster.endorsed == 0) & (roster.p_endorse >= 0.5)].player.tolist()
         if tgt:
-            out.append(("Action", f"**Sponsor outreach:** {name_list(tgt)} look like endorsed players but have no deal on record. Pitch them to team partners."))
+            out.append(("Action", f"**Sponsor outreach:** {name_list(tgt)} look like players with a qualifying endorsement but have none on record. Pitch them to team partners."))
     core = roster.head(5)
     hurt = core[core.p_games < lo].player.tolist()
     if hurt:
@@ -763,7 +763,7 @@ with tab_t:
     tr = TEAM_TBL.loc[tm]
     payroll = roster.salary.sum(min_count=1)
     md(f'''<div class="ph"><div class="ph-left">{team_logo(tm)}<div><div class="ph-name">{e(tm)}</div>
-        <div class="ph-meta">{len(roster)} players · {int(tr["Endorsed"])} endorsed · Payroll {money(payroll)}
+        <div class="ph-meta">{len(roster)} players · {int(tr["Endorsed"])} qualifying endorsements · Payroll {money(payroll)}
         {f" · Metro {roster.metro_pop.iloc[0]:.1f}M · Valued at ${roster.franchise_value.iloc[0]:.1f}B" if isnum(roster.metro_pop.iloc[0]) else ""}</div></div></div>
         <div class="scorebox"><div class="l">Avg marketability · {e(scen)}</div><div class="n">{tr["Avg"]:.1f}</div>
         <div class="l">{ordinal(tr["Rank"])} of {len(TEAM_TBL)} teams</div></div></div>''')
@@ -771,7 +771,7 @@ with tab_t:
     face = roster.iloc[0]
     tiles([("Most marketable", e(face["player"]), f"{face['score']:.1f} · rank {face['rank']} in league", ACCENT),
            ("League median score", f"{d.score.median():.1f}", f"team avg {tr['Avg']:.1f}", None),
-           ("Endorsed players", f"{int(tr['Endorsed'])}", f"of {len(roster)} on the roster", None),
+           ("Qualifying endorsements", f"{int(tr['Endorsed'])}", f"of {len(roster)} on the roster", None),
            ("Avg brand − pay", f"{tr['Gap']:+.2f}" if isnum(tr["Gap"]) else "–", "positive = brand outranks salaries", None)])
 
     left, right = st.columns([1.35, 1], gap="large")
@@ -790,25 +790,25 @@ with tab_t:
 
     sec("Roster", "factor columns are league percentiles")
     cols = {"player": "Player", "age": "Age", "score": "Score", "rank": "Rk", **{"p_" + f: dl.LABEL[f] for f in dl.FACTORS},
-            "endorsed": "Endorsed", "gap": "Brand − pay", "salary": "Salary"}
+            "endorsed": "Qualifying endorsement", "gap": "Brand − pay", "salary": "Salary"}
     if "p_endorse" in roster.columns:
-        cols["p_endorse"] = "Deal likelihood"
+        cols["p_endorse"] = "Qualifying endorsement likelihood"
     rt_ = roster[list(cols)].rename(columns=cols)
     for f in dl.FACTORS:
         rt_[dl.LABEL[f]] = (rt_[dl.LABEL[f]] * 100).round(0)
-    rt_["Endorsed"] = rt_["Endorsed"].map({1: "Yes", 0: "", True: "Yes", False: ""})
+    rt_["Qualifying endorsement"] = rt_["Qualifying endorsement"].map({1: "Yes", 0: "", True: "Yes", False: ""})
     fmt = {"Age": "{:.0f}", "Score": "{:.1f}", "Brand − pay": "{:+.2f}", "Salary": lambda v: money(v), **{dl.LABEL[f]: "{:.0f}" for f in dl.FACTORS}}
-    if "Deal likelihood" in rt_.columns:
-        fmt["Deal likelihood"] = "{:.0%}"
+    if "Qualifying endorsement likelihood" in rt_.columns:
+        fmt["Qualifying endorsement likelihood"] = "{:.0%}"
     st.dataframe(rt_.style.map(style_pct, subset=[dl.LABEL[f] for f in dl.FACTORS]).format(fmt, na_rep="–"),
                  hide_index=True, width="stretch", height=min(640, 36 * len(rt_) + 40))
     st.download_button("Download roster (CSV)", rt_.to_csv(index=False).encode(), f"{tm}_marketability.csv".replace(" ", "_"), "text/csv")
 
     sec("All teams", "ranked by average player marketability")
-    lt = TEAM_TBL.reset_index().rename(columns={"team": "Team", "Avg": "Avg score", "Gap": "Avg brand − pay"})
-    lt = lt[["Rank", "Team", "Players", "Avg score", "Top player", "Top score", "Endorsed", "Avg brand − pay"]]
+    lt = TEAM_TBL.reset_index().rename(columns={"team": "Team", "Avg": "Avg score", "Gap": "Avg brand − pay", "Endorsed": "Qualifying endorsements"})
+    lt = lt[["Rank", "Team", "Players", "Avg score", "Top player", "Top score", "Qualifying endorsements", "Avg brand − pay"]]
     hl = lambda r: [f"background-color:{ACCENT_SOFT};font-weight:600" if r["Team"] == tm else "" for _ in r]
-    st.dataframe(lt.style.apply(hl, axis=1).format({"Avg score": "{:.1f}", "Top score": "{:.1f}", "Avg brand − pay": "{:+.2f}", "Endorsed": "{:.0f}"}, na_rep="–"),
+    st.dataframe(lt.style.apply(hl, axis=1).format({"Avg score": "{:.1f}", "Top score": "{:.1f}", "Avg brand − pay": "{:+.2f}", "Qualifying endorsements": "{:.0f}"}, na_rep="–"),
                  hide_index=True, width="stretch", height=min(1100, 36 * len(lt) + 40))
 
 
@@ -816,7 +816,7 @@ with tab_t:
 with tab_l:
     RANK_BY = {"Marketability score": "score", **{dl.LABEL[f]: "p_" + f for f in dl.FACTORS}}
     if "p_endorse" in d.columns:
-        RANK_BY["Endorsement likelihood"] = "p_endorse"
+        RANK_BY["Qualifying endorsement likelihood"] = "p_endorse"
     RANK_BY["Brand − pay"] = "gap"
     f0, f1, f2 = st.columns([1.4, 1, 0.8])
     by = f0.selectbox("Rank by", list(RANK_BY), key="lb_by")
@@ -824,14 +824,14 @@ with tab_l:
     n = f2.number_input("Show top", 5, N, min(25, N), 5)
     g1, g2, g3 = st.columns([2, 1, 1])
     tms = g1.multiselect("Teams", sorted(d.team.unique()))
-    en = g2.selectbox("Endorsed", ["All", "Endorsed", "Not endorsed"])
+    en = g2.selectbox("Qualifying endorsement", ["All", "Qualifying", "Not qualifying"])
     q = g3.text_input("Name contains")
     col = RANK_BY[by]
     t = d.copy()
     if tms:
         t = t[t.team.isin(tms)]
     if en != "All":
-        t = t[t.endorsed == (1 if en == "Endorsed" else 0)]
+        t = t[t.endorsed == (1 if en == "Qualifying" else 0)]
     if q:
         t = t[t.player.str.contains(q, case=False, regex=False)]
     t = t.sort_values([col, "score"], ascending=[order == "Lowest first", False], na_position="last").head(int(n))
@@ -843,7 +843,7 @@ with tab_l:
     for f in dl.FACTORS:
         if dl.LABEL[f] != by:
             board[dl.LABEL[f]] = (t["p_" + f] * 100).round(0)
-    board["Endorsed"] = t.endorsed.map({1: "Yes", 0: "", True: "Yes", False: ""})
+    board["Qualifying endorsement"] = t.endorsed.map({1: "Yes", 0: "", True: "Yes", False: ""})
     board["Sponsors"] = t.sponsors_listed.where(t.sponsors_listed != "", t.lead_sponsors.map(sponsor_names))
     if by != "Brand − pay":
         board["Brand − pay"] = t.gap
@@ -856,7 +856,7 @@ with tab_l:
     fmt = {"Score": "{:.1f}", "Brand − pay": "{:+.2f}", "Draw factor": "{:.3f}", "Draw vs team": "{:+.3f}", "Road games": "{:.0f}", **{c: "{:.0f}" for c in pct_cols}}
     if by in board.columns and by != "Brand − pay":
         fmt[by] = "{:.0f}" if col.startswith("p_") and col != "p_endorse" else "{:.1f}"
-    if by == "Endorsement likelihood":
+    if by == "Qualifying endorsement likelihood":
         fmt[by] = "{:.0f}%"
     st.dataframe(sty.format(fmt, na_rep="–"), hide_index=True, width="stretch", height=640)
     st.download_button("Download this table (CSV)", board.to_csv(index=False).encode(), "mavs_leaderboard.csv", "text/csv")
@@ -887,7 +887,7 @@ with tab_c:
                  f"<tr><td>Age</td><td>{int(ra_['age']) if isnum(ra_['age']) else '–'}</td><td>{int(rb_['age']) if isnum(rb_['age']) else '–'}</td></tr>"
                  f"<tr><td>Salary</td><td>{money(ra_['salary'])}</td><td>{money(rb_['salary'])}</td></tr>"
                  f"<tr><td>Brand minus pay</td><td>{ra_['gap']:+.2f}</td><td>{rb_['gap']:+.2f}</td></tr>"
-                 f"<tr><td>Endorsed</td><td>{'Yes' if ra_['endorsed'] else 'No'}</td><td>{'Yes' if rb_['endorsed'] else 'No'}</td></tr>")
+                 f"<tr><td>Qualifying endorsement</td><td>{'Yes' if ra_['endorsed'] else 'No'}</td><td>{'Yes' if rb_['endorsed'] else 'No'}</td></tr>")
         md(f'<table class="grid"><tr><th></th><th style="color:{ACCENT}">{e(pa)}</th><th>{e(pb)}</th></tr>{body}</table>')
 
 
@@ -909,7 +909,7 @@ with tab_s:
                     ("Out-marketing his look-alikes", POS) if gap >= 8 else ("In line with his look-alikes", MUTED)
     tiles([(f"{sp_pick} · 2K rating", f"{me['rating_2k']:.0f}" if isnum(me["rating_2k"]) else "–", e(me["team"]), None),
            (f"{sp_pick} · marketability", f"{me['score']:.1f}", f"rank {me['rank']} of {N}", ACCENT),
-           ("Look-alike average", f"{peer_avg:.1f}", f"{len(nb)} players · {int(nb.endorsed.sum())} endorsed", None),
+           ("Look-alike average", f"{peer_avg:.1f}", f"{len(nb)} players · {int(nb.endorsed.sum())} qualifying endorsements", None),
            ("Marketability gap", f"{gap:+.1f}", f'<b style="color:{vcol}">{verdict}</b>', vcol)])
 
     left, right = st.columns([1.15, 1], gap="large")
@@ -935,20 +935,20 @@ with tab_s:
     with right:
         sec("Nearest look-alikes")
         tbl = pd.DataFrame({"Player": nb.player, "Team": nb.team, "Similarity": nb.similarity, "2K": nb.rating_2k, "Score": nb.score,
-                            f"Score vs {sp_pick}": nb.score - me["score"], "Endorsed": nb.endorsed.astype(bool)})
+                            f"Score vs {sp_pick}": nb.score - me["score"], "Qualifying endorsement": nb.endorsed.astype(bool)})
         st.dataframe(tbl, hide_index=True, width="stretch",
                      column_config={"Similarity": st.column_config.NumberColumn(format="%.0f%%"), "2K": st.column_config.NumberColumn(format="%.0f"),
                                     "Score": st.column_config.NumberColumn(format="%.1f"), f"Score vs {sp_pick}": st.column_config.NumberColumn(format="%+.1f"),
-                                    "Endorsed": st.column_config.CheckboxColumn()})
+                                    "Qualifying endorsement": st.column_config.CheckboxColumn()})
         st.caption(f"Positive 'Score vs' = the look-alike is more marketable than {sp_pick}.")
 
     sec("League-wide", f"each player's score minus the average of his {sk} look-alikes ({', '.join(match_labels) or 'Performance (2K)'})")
     gaps = knn.marketability_gap(d, k=sk, features=feats).join(d[["player", "team", "rating_2k", "score", "endorsed"]])
     gt = lambda g: pd.DataFrame({"Player": g.player, "Team": g.team, "2K": g.rating_2k, "Score": g.score, "Look-alike avg": g.peer_avg,
-                                 "Gap": g.gap, "Endorsed": g.endorsed.astype(bool)})
+                                 "Gap": g.gap, "Qualifying endorsement": g.endorsed.astype(bool)})
     cfg = {"2K": st.column_config.NumberColumn(format="%.0f"), "Score": st.column_config.NumberColumn(format="%.1f"),
            "Look-alike avg": st.column_config.NumberColumn(format="%.1f"), "Gap": st.column_config.NumberColumn(format="%+.1f"),
-           "Endorsed": st.column_config.CheckboxColumn()}
+           "Qualifying endorsement": st.column_config.CheckboxColumn()}
     u1, u2 = st.columns(2, gap="large")
     with u1:
         md(f'<p class="eyebrow" style="color:{NEG}">Most under-marketed</p>')
@@ -989,7 +989,7 @@ with tab_d:
         cc = mt["crosscheck"]
         md(kv_table([("Source", e(source)),
                      ("Players", f"{mt['n']}"),
-                     ("Endorsed", f"{mt['n_endorsed']} ({mt['n_endorsed_orig']} recorded + {mt['n_leads_included']} unverified leads)"),
+                     ("Qualifying endorsements", f"{mt['n_endorsed']} ({mt['n_endorsed_orig']} recorded + {mt['n_leads_included']} unverified leads)"),
                      ("Updated", time.strftime("%d %b %Y %H:%M", time.localtime(mt["modified"]))),
                      ("Scenario in use", e(scen)),
                      ("Excel cross-check", "Matches the workbook" if cc is not None and cc < 1e-6 else "Computed from inputs" if cc is None else f"Differs by up to {cc:.3f}")]))
@@ -1018,7 +1018,7 @@ with tab_m:
     sec("All weighting scenarios", "points")
     st.dataframe(model.weights.rename(index=dl.LABEL).round(1), width="stretch")
 
-    sec("How well the score lines up with endorsements")
+    sec("How well the score lines up with qualifying endorsements")
     y = d.endorsed
     auc_rows = []
     for s in model.scenarios:
@@ -1028,8 +1028,8 @@ with tab_m:
             auc_rows.append((s, np.nan))
     reg = model.regression
     a1, a2 = st.columns([1, 1.4], gap="large")
-    a1.dataframe(pd.DataFrame(auc_rows, columns=["Weights", "AUC vs endorsed"]).round(3), hide_index=True, width="stretch")
-    a2.markdown(f"AUC is how often a random endorsed player outscores a random non-endorsed one (0.5 = coin flip, 1.0 = perfect). "
+    a1.dataframe(pd.DataFrame(auc_rows, columns=["Weights", "AUC vs qualifying endorsement"]).round(3), hide_index=True, width="stretch")
+    a2.markdown(f"AUC is how often a random player with a qualifying endorsement outscores a random player without one (0.5 = coin flip, 1.0 = perfect). "
                 f"The regression's cross-validated AUC is **{reg.get('cv_auc', float('nan')):.3f}**. Scenarios other than the regression "
                 "were not fitted to the data, so their AUC is a fair test.")
 
@@ -1037,11 +1037,11 @@ with tab_m:
     kb = knn.best_k(d)
     k1, k2 = st.columns([1, 1.4], gap="large")
     k1.dataframe(kb.round(3), hide_index=True, width="stretch")
-    k2.markdown("For each player, the share of his *k* nearest neighbours who are endorsed, tested leave-one-out (a player is never his own neighbour). "
-                "The AUC shows how well that share separates endorsed from non-endorsed players.")
+    k2.markdown("For each player, the share of his *k* nearest neighbours who have a qualifying endorsement, tested leave-one-out (a player is never his own neighbour). "
+                "The AUC shows how well that share separates players with a qualifying endorsement from those without one.")
 
     sec("Limits")
-    for line in [f"Endorsements are the outcome. The sheet records mostly well-documented deals; {mt['n_leads_included']} more come from web-search leads nobody has verified.",
+    for line in [f"Qualifying endorsements are the outcome. The sheet records mostly well-documented deals; {mt['n_leads_included']} more come from web-search leads nobody has verified.",
                  "Factors overlap (a famous player is high on several), so individual weights are uncertain; the ranking changes little across reasonable weights.",
                  "Sentiment is media tone from headlines, not fan opinion. Global reach uses Wikipedia and Google Trends and is weak for China.",
                  "Team brand health (market size and franchise value) is shown at weight 0: it explains about 1% of endorsements. Availability is 50% games played, 50% career runway.",
